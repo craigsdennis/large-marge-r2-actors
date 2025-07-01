@@ -11,17 +11,18 @@ app.use(useSession());
 
 app.post('/api/uploads', async (c) => {
 	const payload = await c.req.json();
-	// FileName, Size
 	// Create new uploader, return the key
 	// TODO: We are going to want to use the c.var.session.id
 	const uploaderId = c.env.UPLOADER.newUniqueId();
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
-	const partRequests = await uploaderStub.initialize(payload.fileName, payload.fileSize);
+	await uploaderStub.initialize(payload.fileName, payload.fileSize);
+	const partRequests = await uploaderStub.getMissingPartRequests();
 	const data = await c.var.session.get();
 	if (data) {
 		data.latestUploaderId = uploaderId.toString();
 		await c.var.session.update(data);
 	}
+	// TODO: Do not pass the uploader ID
 	return c.json({
 		uploaderId: uploaderId.toString(),
 		partRequests
@@ -29,16 +30,22 @@ app.post('/api/uploads', async (c) => {
 });
 
 app.get('/api/uploads/:id', async (c) => {
-	// Get the missing parts
-	// Sessions for Hono?
+	const {id} = c.req.param();
+	const uploaderId = c.env.UPLOADER.idFromString(id);
+	const uploaderStub = c.env.UPLOADER.get(uploaderId);
+	const partRequests = uploaderStub.getMissingPartRequests();
+	return Response.json({
+		partRequests
+	});
 });
-
-// TODO: Resume and Done
 
 app.patch('/api/uploads/:id/:part_number', async (c) => {
 	// Get the Actor
+	const {id} = c.req.param();
+	const uploaderId = c.env.UPLOADER.idFromString(id);
+	const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	// Pass request through into fetch
-	// Return success result
+	return uploaderStub.fetch(c.req.raw);
 });
 
 export default app;

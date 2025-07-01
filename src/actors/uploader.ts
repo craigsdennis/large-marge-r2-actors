@@ -6,7 +6,7 @@ export type PartRequest = {
 	partEnd: number;
 };
 
-const PART_SIZE = 10 * 1024 * 1024; // 10 Meg
+const PART_SIZE = 10 * 1024 * 1024; // 10mb
 
 export class Uploader extends Actor<Env> {
 	// Cached at the instance level
