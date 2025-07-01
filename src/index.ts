@@ -1,26 +1,44 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.jsonc`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { Hono } from 'hono';
+import { useSession } from '@hono/session';
+import type { SessionEnv } from '@hono/session';
+import { Uploader } from './actors/uploader';
 
-export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		const url = new URL(request.url);
-		switch (url.pathname) {
-			case '/message':
-				return new Response('Hello, World!');
-			case '/random':
-				return new Response(crypto.randomUUID());
-			default:
-				return new Response('Not Found', { status: 404 });
-		}
-	},
-} satisfies ExportedHandler<Env>;
+export { Uploader };
+
+const app = new Hono<SessionEnv & { Bindings: Env }>();
+
+app.use(useSession());
+
+app.post('/api/uploads', async (c) => {
+	const payload = await c.req.json();
+	// FileName, Size
+	// Create new uploader, return the key
+	// TODO: We are going to want to use the c.var.session.id
+	const uploaderId = c.env.UPLOADER.newUniqueId();
+	const uploaderStub = c.env.UPLOADER.get(uploaderId);
+	const partRequests = await uploaderStub.initialize(payload.fileName, payload.fileSize);
+	const data = await c.var.session.get();
+	if (data) {
+		data.latestUploaderId = uploaderId.toString();
+		await c.var.session.update(data);
+	}
+	return c.json({
+		uploaderId: uploaderId.toString(),
+		partRequests
+	});
+});
+
+app.get('/api/uploads/:id', async (c) => {
+	// Get the missing parts
+	// Sessions for Hono?
+});
+
+// TODO: Resume and Done
+
+app.patch('/api/uploads/:id/:part_number', async (c) => {
+	// Get the Actor
+	// Pass request through into fetch
+	// Return success result
+});
+
+export default app;

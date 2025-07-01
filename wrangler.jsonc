@@ -7,15 +7,28 @@
 	"name": "large-marge",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-07-01",
-	"compatibility_flags": [
-		"global_fetch_strictly_public"
-	],
+	"compatibility_flags": ["global_fetch_strictly_public"],
 	"assets": {
 		"directory": "./public"
 	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "Uploader",
+				"name": "UPLOADER"
+			}
+		]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Uploader"] }],
+	"r2_buckets": [
+		{
+			"bucket_name": "biggies",
+			"binding": "BIGGIES"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
