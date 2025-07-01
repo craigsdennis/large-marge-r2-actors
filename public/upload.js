@@ -118,7 +118,7 @@ class LargeMargeUploader {
             throw new Error(`Failed to upload part ${partNumber}: ${response.statusText}`);
         }
 
-		console.log("patch response", await response.json())
+		console.log("patch response", await response.json());
 
         // Update progress
         this.completedParts++;

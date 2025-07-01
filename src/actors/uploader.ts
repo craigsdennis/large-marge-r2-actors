@@ -72,6 +72,7 @@ export class Uploader extends Actor<Env> {
 			let partEnd = partStart + PART_SIZE;
 			if (i === partCount - 1) {
 				const remainder = fileSize % PART_SIZE;
+				console.log("Final remainder", remainder);
 				partEnd = partStart + remainder;
 			}
 			this.sql`INSERT INTO parts (part_number, part_start, part_end) VALUES (${i + 1}, ${partStart}, ${partEnd});`;
@@ -115,7 +116,7 @@ export class Uploader extends Actor<Env> {
 		if (request.method === 'PATCH') {
 			const url = new URL(request.url);
 			const [_, apiCheck, uploadsCheck, uploaderId, partNumberString] = url.pathname.split('/');
-			console.log({apiCheck, uploadsCheck, uploaderId, partNumberString, official: this.identifier});
+			// console.log({apiCheck, uploadsCheck, uploaderId, partNumberString, official: this.identifier});
 			if (apiCheck === 'api' && uploadsCheck === 'uploads') {
 				const partNumber = parseInt(partNumberString);
 				const mpu = await this.getMultiPartUpload();
