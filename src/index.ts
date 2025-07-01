@@ -1,6 +1,6 @@
-import { Hono } from 'hono';
+import { Context, Env, Hono } from 'hono';
 import { useSession } from '@hono/session';
-import type { SessionEnv } from '@hono/session';
+import type { Session, SessionData, SessionEnv, Storage } from '@hono/session';
 import { Uploader } from './actors/uploader';
 
 export { Uploader };
@@ -49,8 +49,9 @@ app.get('/api/uploads/:id', async (c) => {
 	});
 });
 
-async function cleanup(c) {
+async function cleanup(c, uploaderStub: DurableObjectStub<Uploader>) {
 	await c.var.session.delete();
+	//await uploaderStub.destroy();
 }
 
 app.patch('/api/uploads/:id/:part_number', async (c) => {
@@ -64,7 +65,7 @@ app.patch('/api/uploads/:id/:part_number', async (c) => {
 	const data = await c.var.session.get();
 	if (data) {
 		if (remainingCount === 0) {
-			await cleanup(c);
+			await cleanup(c, uploaderStub);
 		} else {
 			data.remainingCount = remainingCount;
 			await c.var.session.update(data);

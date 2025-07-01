@@ -18,6 +18,9 @@ class LargeMargeUploader {
         this.resumeFilename = document.getElementById('resume-filename');
         this.resumeParts = document.getElementById('resume-parts');
         this.resumeDismiss = document.getElementById('resume-dismiss');
+        
+        // Truck animation elements
+        this.truckAnimation = document.getElementById('truck-animation');
 
         this.selectedFile = null;
         this.uploaderId = null;
@@ -232,8 +235,13 @@ class LargeMargeUploader {
 
     showSuccess(message) {
         this.resultSection.style.display = 'block';
-        this.resultMessage.textContent = message;
-        this.resultMessage.className = 'result-message success';
+        this.resultMessage.style.display = 'none'; // Hide the regular message
+        this.truckAnimation.style.display = 'block';
+        
+        // Trigger the truck animation
+        setTimeout(() => {
+            this.truckAnimation.classList.add('truck-drive-in');
+        }, 100);
     }
 
     resetProgress() {
