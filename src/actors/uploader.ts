@@ -68,11 +68,9 @@ export class Uploader extends Actor<Env> {
 		const partCount = Math.ceil(fileSize / PART_SIZE);
 		for (let i = 0; i < partCount; i++) {
 			const partStart = i * PART_SIZE;
-			// Is there an extra byte, here?
 			let partEnd = partStart + PART_SIZE;
 			if (i === partCount - 1) {
 				const remainder = fileSize % PART_SIZE;
-				console.log("Final remainder", remainder);
 				partEnd = partStart + remainder;
 			}
 			this.sql`INSERT INTO parts (part_number, part_start, part_end) VALUES (${i + 1}, ${partStart}, ${partEnd});`;
@@ -84,7 +82,6 @@ export class Uploader extends Actor<Env> {
 		if (this._multiPartUpload) {
 			return this._multiPartUpload;
 		}
-		// TODO: Type the config
 		const config = await this.getConfiguration();
 		if (config === undefined) {
 			throw new Error('Configuration is missing, call initialize first');
@@ -116,7 +113,7 @@ export class Uploader extends Actor<Env> {
 		if (request.method === 'PATCH') {
 			const url = new URL(request.url);
 			const [_, apiCheck, uploadsCheck, uploaderId, partNumberString] = url.pathname.split('/');
-			// console.log({apiCheck, uploadsCheck, uploaderId, partNumberString, official: this.identifier});
+			// TODO: this.identifier === "default"
 			if (apiCheck === 'api' && uploadsCheck === 'uploads') {
 				const partNumber = parseInt(partNumberString);
 				const mpu = await this.getMultiPartUpload();
