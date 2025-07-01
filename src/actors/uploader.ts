@@ -1,4 +1,5 @@
 import { Actor, type ActorState } from '@cloudflare/actors';
+import { useFormStatus } from 'hono/jsx/dom';
 
 export type PartRequest = {
 	partNumber: number;
@@ -22,11 +23,13 @@ export class Uploader extends Actor<Env> {
 				description: 'Create configuration table',
 				sql: `CREATE TABLE IF NOT EXISTS configuration (
                 id INTEGER PRIMARY KEY,
-                original_filename TEXT NOT NULL,
+                original_file_name TEXT NOT NULL,
 				file_size INTEGER NOT NULL,
 				key TEXT NOT NULL,
 				multipart_upload_id TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
             );`,
 			},
 			{
@@ -38,8 +41,8 @@ export class Uploader extends Actor<Env> {
 				part_end INTEGER,
 				r2_uploaded_part STRING,
                 completed BOOLEAN DEFAULT 'f',
-				created_at TIMESTAMP DEFAULT NOW,
-				last_updated TIMESTAMP DEFAULT NOW
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );`,
 			},
 		];
@@ -48,23 +51,12 @@ export class Uploader extends Actor<Env> {
 		});
 	}
 
-	partRequestForPartNumber(partNumber: number, fileSize: number): PartRequest {
-		const partStart = partNumber * PART_SIZE;
-		let partEnd = (partNumber + 1) * PART_SIZE;
-		// If it's the last it will be a little less
-		if (partEnd > fileSize) {
-			const remainder = fileSize % PART_SIZE;
-			partEnd = partStart + remainder;
-		}
-		return { partNumber, partStart, partEnd };
-	}
-
 	async initialize(originalFileName: string, fileSize: number) {
 		// TODO: Find a unique name for the key
 		const key = originalFileName;
 		// Create the multi-partupload
 		this._multiPartUpload = await this.env.BIGGIES.createMultipartUpload(key);
-		this.sql`DELETE FROM configuration`;
+		this.sql`DELETE FROM configuration;`;
 		// Insert into configuration
 		this.sql`INSERT INTO configuration (
 			original_file_name,
@@ -82,7 +74,7 @@ export class Uploader extends Actor<Env> {
 				const remainder = fileSize % PART_SIZE;
 				partEnd = partStart + remainder;
 			}
-			this.sql`INSERT INTO parts (part_number, part_start, part_end) VALUES (${i}, ${partStart}, ${partEnd});`;
+			this.sql`INSERT INTO parts (part_number, part_start, part_end) VALUES (${i + 1}, ${partStart}, ${partEnd});`;
 		}
 	}
 
@@ -101,8 +93,14 @@ export class Uploader extends Actor<Env> {
 	}
 
 	async getMissingPartRequests(): Promise<PartRequest[]> {
-		const missing = this.sql`SELECT * FROM parts WHERE completed = 'f' ORDER BY part_number`;
-		const partRequests = missing.map((index) => this.partRequestForPartNumber(index, config.file_size));
+		const missing = this.sql`SELECT * FROM parts WHERE completed = 'f' ORDER BY part_number;`;
+		const partRequests = missing.map((row) => {
+			return {
+				partNumber: row.part_number as number,
+				partStart: row.part_start as number,
+				partEnd: row.part_end as number
+			};
+		});
 		return partRequests;
 	}
 
@@ -116,8 +114,9 @@ export class Uploader extends Actor<Env> {
 	async fetch(request: Request): Promise<Response> {
 		if (request.method === 'PATCH') {
 			const url = new URL(request.url);
-			const [apiCheck, uploadsCheck, uploaderId, partNumberString] = url.pathname.split('/');
-			if (apiCheck === 'api' && uploadsCheck === 'uploads' && uploaderId === this.identifier) {
+			const [_, apiCheck, uploadsCheck, uploaderId, partNumberString] = url.pathname.split('/');
+			console.log({apiCheck, uploadsCheck, uploaderId, partNumberString, official: this.identifier});
+			if (apiCheck === 'api' && uploadsCheck === 'uploads') {
 				const partNumber = parseInt(partNumberString);
 				const mpu = await this.getMultiPartUpload();
 				// R2 Upload
@@ -126,10 +125,17 @@ export class Uploader extends Actor<Env> {
 				this.sql`UPDATE parts SET
 					r2_uploaded_part=${JSON.stringify(part)},
 					completed='t',
-					updated_at=NOW
+					updated_at=CURRENT_TIMESTAMP
 				WHERE
 					part_number=${partNumber}`;
-				return Response.json({ success: true });
+				const results = this.sql`SELECT count(*) as remaining FROM parts WHERE completed='f'`
+				const remainingCount = results[0].remaining;
+				if (remainingCount === 0) {
+					const partsResults = this.sql`SELECT r2_uploaded_part FROM parts ORDER BY part_number`;
+					const parts = partsResults.map(row => JSON.parse(row.r2_uploaded_part as string))
+					await mpu.complete(parts);
+				}
+				return Response.json({ success: true, remainingCount});
 			}
 		}
 		return new Response('Not Found', { status: 404 });

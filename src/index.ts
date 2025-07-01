@@ -13,10 +13,14 @@ app.post('/api/uploads', async (c) => {
 	const payload = await c.req.json();
 	// Create new uploader, return the key
 	// TODO: We are going to want to use the c.var.session.id
+	console.log("Before");
 	const uploaderId = c.env.UPLOADER.newUniqueId();
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
+	console.log("Post constructor");
 	await uploaderStub.initialize(payload.fileName, payload.fileSize);
+	console.log("Post Initialize");
 	const partRequests = await uploaderStub.getMissingPartRequests();
+	console.log("Post partRequests");
 	const data = await c.var.session.get();
 	if (data) {
 		data.latestUploaderId = uploaderId.toString();
@@ -45,7 +49,7 @@ app.patch('/api/uploads/:id/:part_number', async (c) => {
 	const uploaderId = c.env.UPLOADER.idFromString(id);
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	// Pass request through into fetch
-	return uploaderStub.fetch(c.req.raw);
+	return await uploaderStub.fetch(c.req.raw);
 });
 
 export default app;
