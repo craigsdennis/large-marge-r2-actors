@@ -12,12 +12,15 @@ body {
     color: #333;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .container {
     max-width: 600px;
     margin: 0 auto;
     padding: 2rem;
+    flex: 1;
 }
 
 header {
@@ -242,6 +245,141 @@ header p {
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+
+/* Truck Animation Styles */
+.truck-animation {
+    position: relative;
+    overflow: hidden;
+    height: 200px;
+    background: linear-gradient(135deg, #87CEEB 0%, #98D8E8 100%);
+    border-radius: 12px;
+    margin-top: 1rem;
+    border: 3px solid #FFD700;
+}
+
+.truck-container {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.truck {
+    font-size: 4rem;
+    position: absolute;
+    left: -100px;
+    transition: all 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+}
+
+.truck-animation.truck-drive-in .truck {
+    left: 50%;
+    transform: translateX(-50%);
+    animation: bounce 0.5s ease-in-out 2s;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-10px); }
+}
+
+.marge-message {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 1s ease-in-out 2.5s;
+}
+
+.truck-animation.truck-drive-in .marge-message {
+    opacity: 1;
+}
+
+.speech-bubble {
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 20px;
+    border: 3px solid #FF4500;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    max-width: 200px;
+}
+
+.speech-bubble::before {
+    content: '';
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid transparent;
+    border-right: 15px solid #FF4500;
+}
+
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    border-right: 12px solid white;
+}
+
+.speech-bubble p {
+    margin: 0.25rem 0;
+    color: #333;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.speech-bubble strong {
+    color: #FF4500;
+    font-size: 1rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Sticky Footer */
+.sticky-footer {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1rem 0;
+    margin-top: auto;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.footer-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.footer-content p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.footer-content a {
+    color: #87CEEB;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.footer-content a:hover {
+    color: #FFD700;
+    text-decoration: underline;
 }
 
 /* Responsive Design */
