@@ -38,6 +38,48 @@ header p {
     opacity: 0.9;
 }
 
+.resume-section {
+    margin-bottom: 2rem;
+}
+
+.resume-banner {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ebff 100%);
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+}
+
+.resume-info h3 {
+    margin: 0 0 0.5rem 0;
+    color: #667eea;
+    font-size: 1.2rem;
+}
+
+.resume-info p {
+    margin: 0.25rem 0;
+    color: #333;
+}
+
+.resume-dismiss {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.resume-dismiss:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
 .upload-section {
     background: white;
     padding: 2.5rem;

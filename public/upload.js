@@ -12,18 +12,57 @@ class LargeMargeUploader {
         this.uploadStatus = document.getElementById('upload-status');
         this.resultSection = document.getElementById('result-section');
         this.resultMessage = document.getElementById('result-message');
+        
+        // Resume elements
+        this.resumeSection = document.getElementById('resume-section');
+        this.resumeFilename = document.getElementById('resume-filename');
+        this.resumeParts = document.getElementById('resume-parts');
+        this.resumeDismiss = document.getElementById('resume-dismiss');
 
         this.selectedFile = null;
         this.uploaderId = null;
         this.partRequests = [];
         this.completedParts = 0;
+        
+        // Resume data
+        this.resumeData = null;
+        this.isResuming = false;
 
         this.initEventListeners();
+        this.checkForResume();
     }
 
     initEventListeners() {
         this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
         this.uploadForm.addEventListener('submit', this.handleUpload.bind(this));
+        this.resumeDismiss.addEventListener('click', this.dismissResume.bind(this));
+    }
+    
+    async checkForResume() {
+        try {
+            const response = await fetch('/api/resume');
+            if (!response.ok) return;
+            
+            const data = await response.json();
+            if (data.latestUploaderId && data.lastUploadedFileName) {
+                this.resumeData = data;
+                this.showResumeOption();
+            }
+        } catch (error) {
+            console.log('No resume data available:', error);
+        }
+    }
+    
+    showResumeOption() {
+        this.resumeFilename.textContent = this.resumeData.lastUploadedFileName;
+        this.resumeParts.textContent = this.resumeData.remainingCount || 'some';
+        this.resumeSection.style.display = 'block';
+    }
+    
+    dismissResume() {
+        this.resumeSection.style.display = 'none';
+        this.resumeData = null;
+        this.isResuming = false;
     }
 
     handleFileSelect(event) {
@@ -33,6 +72,18 @@ class LargeMargeUploader {
             this.fileName.textContent = file.name;
             this.fileSize.textContent = this.formatFileSize(file.size);
             this.fileInfo.style.display = 'block';
+            
+            // Check if this matches the resume file
+            if (this.resumeData && file.name === this.resumeData.lastUploadedFileName) {
+                this.isResuming = true;
+                this.uploadButton.textContent = 'Resume Upload';
+                this.uploadButton.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+            } else {
+                this.isResuming = false;
+                this.uploadButton.textContent = 'Upload File';
+                this.uploadButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            }
+            
             this.uploadButton.disabled = false;
             this.resetProgress();
         }
@@ -60,6 +111,14 @@ class LargeMargeUploader {
     }
 
     async startUpload() {
+        if (this.isResuming && this.resumeData) {
+            await this.resumeUpload();
+        } else {
+            await this.startNewUpload();
+        }
+    }
+    
+    async startNewUpload() {
         this.updateStatus('Initializing upload...');
 
         // Step 1: Initialize upload
@@ -88,6 +147,32 @@ class LargeMargeUploader {
         await this.uploadParts();
 
         this.showSuccess('Upload completed successfully!');
+    }
+    
+    async resumeUpload() {
+        this.updateStatus('Resuming upload...');
+        
+        // Use existing upload ID
+        this.uploaderId = this.resumeData.latestUploaderId;
+        
+        // Get remaining parts
+        const partsResponse = await fetch(`/api/uploads/${this.uploaderId}`);
+        if (!partsResponse.ok) {
+            throw new Error(`Failed to get remaining parts: ${partsResponse.statusText}`);
+        }
+        
+        const partsData = await partsResponse.json();
+        this.partRequests = partsData.partRequests;
+        
+        this.updateStatus(`Resuming upload with ${this.partRequests.length} remaining parts...`);
+        
+        // Hide resume banner since we're now resuming
+        this.resumeSection.style.display = 'none';
+        
+        // Upload remaining parts
+        await this.uploadParts();
+        
+        this.showSuccess('Upload resumed and completed successfully!');
     }
 
     async uploadParts() {
