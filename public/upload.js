@@ -176,15 +176,12 @@ class LargeMargeUploader {
     }
 
     async uploadParts() {
-        const uploadPromises = this.partRequests.map(async (partRequest) => {
-            return this.uploadPart(partRequest);
-        });
-
         // Upload parts with some concurrency but not too many at once
         const CONCURRENT_UPLOADS = 3;
-        for (let i = 0; i < uploadPromises.length; i += CONCURRENT_UPLOADS) {
-            const batch = uploadPromises.slice(i, i + CONCURRENT_UPLOADS);
-            await Promise.all(batch);
+        for (let i = 0; i < this.partRequests.length; i += CONCURRENT_UPLOADS) {
+            const batch = this.partRequests.slice(i, i + CONCURRENT_UPLOADS);
+            const batchPromises = batch.map(partRequest => this.uploadPart(partRequest));
+            await Promise.all(batchPromises);
         }
     }
 
