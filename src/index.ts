@@ -43,7 +43,7 @@ app.get('/api/uploads/:id', async (c) => {
 	const {id} = c.req.param();
 	const uploaderId = c.env.UPLOADER.idFromString(id);
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
-	const partRequests = uploaderStub.getMissingPartRequests();
+	const partRequests = await uploaderStub.getMissingPartRequests();
 	return Response.json({
 		partRequests
 	});
