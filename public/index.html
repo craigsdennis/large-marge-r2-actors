@@ -3,30 +3,55 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
+		<title>Large Marge - File Upload Demo</title>
+		<link rel="stylesheet" href="/styles.css">
 	</head>
 	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+		<div class="container">
+			<header>
+				<h1>Large Marge</h1>
+				<p>Multipart file upload demo for large files to R2</p>
+			</header>
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
+			<main>
+				<div class="upload-section">
+					<form id="upload-form" class="upload-form">
+						<div class="file-input-wrapper">
+							<input type="file" id="file-input" class="file-input" required>
+							<label for="file-input" class="file-input-label">
+								<span class="file-input-text">Choose a file to upload</span>
+							</label>
+						</div>
+						
+						<div class="file-info" id="file-info" style="display: none;">
+							<div class="file-details">
+								<span class="file-name" id="file-name"></span>
+								<span class="file-size" id="file-size"></span>
+							</div>
+						</div>
+
+						<button type="submit" class="upload-button" id="upload-button" disabled>
+							Upload File
+						</button>
+					</form>
+
+					<div class="progress-section" id="progress-section" style="display: none;">
+						<div class="progress-bar">
+							<div class="progress-fill" id="progress-fill"></div>
+						</div>
+						<div class="progress-info">
+							<span id="progress-text">0%</span>
+							<span id="upload-status">Preparing upload...</span>
+						</div>
+					</div>
+
+					<div class="result-section" id="result-section" style="display: none;">
+						<div class="result-message" id="result-message"></div>
+					</div>
+				</div>
+			</main>
+		</div>
+
+		<script src="/upload.js"></script>
 	</body>
 </html>
