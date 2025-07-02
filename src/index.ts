@@ -65,6 +65,9 @@ app.patch('/api/uploads/:id/:part_number', async (c) => {
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	// Pass request through into fetch
 	const response = await uploaderStub.fetch(c.req.raw);
+	if (!response.ok) {
+		throw new Error("Patch failed");
+	}
 	const { remainingCount } = await response.json<{ remainingCount: number }>();
 	const data = await c.var.session.get();
 	if (data) {
