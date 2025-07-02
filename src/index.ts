@@ -54,7 +54,8 @@ app.get('/api/uploads/:id', async (c) => {
 
 async function cleanup(c, uploaderStub: DurableObjectStub<Uploader>) {
 	await c.var.session.delete();
-	//await uploaderStub.destroy();
+	await uploaderStub.cleanup();
+	console.log("Cleaned up session and Actor data");
 }
 
 app.patch('/api/uploads/:id/:part_number', async (c) => {

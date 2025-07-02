@@ -151,4 +151,9 @@ export class Uploader extends Actor<Env> {
 		}
 		return new Response('Not Found', { status: 404 });
 	}
+
+	async cleanup() {
+		await this.ctx.storage.deleteAll();
+		await this.ctx.storage.deleteAlarm();
+	}
 }
