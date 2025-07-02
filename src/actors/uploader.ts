@@ -1,19 +1,19 @@
 import { Actor, type ActorState } from '@cloudflare/actors';
 
-export type PartRequest = {
+type PartRequest = {
 	partNumber: number;
 	partStart: number;
 	partEnd: number;
 };
 
-export type Configuration = {
+type Configuration = {
 	original_file_name: string;
 	file_size: number;
 	key: string;
 	multipart_upload_id: string;
 };
 
-export type Part = {
+type Part = {
 	part_number: number;
 	part_start: number;
 	part_end: number;
@@ -100,7 +100,7 @@ export class Uploader extends Actor<Env> {
 		if (config === undefined) {
 			throw new Error('Configuration is missing, call initialize first');
 		}
-		this._multiPartUpload = this.env.BIGGIES.resumeMultipartUpload(config.key as string, config.multipart_upload_id as string);
+		this._multiPartUpload = this.env.BIGGIES.resumeMultipartUpload(config.key, config.multipart_upload_id);
 		return this._multiPartUpload;
 	}
 
@@ -127,8 +127,7 @@ export class Uploader extends Actor<Env> {
 		if (request.method === 'PATCH') {
 			const url = new URL(request.url);
 			const [_, apiCheck, uploadsCheck, uploaderId, partNumberString] = url.pathname.split('/');
-			// TODO: this.identifier === "default"
-			if (apiCheck === 'api' && uploadsCheck === 'uploads') {
+			if (apiCheck === 'api' && uploadsCheck === 'uploads' && this.identifier === uploaderId) {
 				const partNumber = parseInt(partNumberString);
 				const mpu = await this.getMultiPartUpload();
 				// R2 Upload

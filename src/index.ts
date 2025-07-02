@@ -1,15 +1,16 @@
-import { Context, Env, Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { useSession } from '@hono/session';
 import type { Session, SessionData, SessionEnv, Storage } from '@hono/session';
 import { Uploader } from './actors/uploader';
 
 export { Uploader };
 
-const app = new Hono<SessionEnv & { Bindings: Env }>();
+type EnvWithSession = {Bindings: Env} & SessionEnv;
+const app = new Hono<EnvWithSession>();
 
 app.use(useSession());
 
-app.get('/api/resume', async(c) => {
+app.get('/api/resume', async (c) => {
 	const data = await c.var.session.get();
 	if (data?.latestUploaderId) {
 		return c.json({
@@ -19,33 +20,35 @@ app.get('/api/resume', async(c) => {
 		});
 	}
 	return c.json({});
-})
+});
 
 app.post('/api/uploads', async (c) => {
 	const payload = await c.req.json();
-	const uploaderId = c.env.UPLOADER.newUniqueId();
+	const uploaderIdString = crypto.randomUUID();
+	const uploaderId = c.env.UPLOADER.idFromName(uploaderIdString);
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
+	await uploaderStub.setIdentifier(uploaderIdString);
 	await uploaderStub.initialize(payload.fileName, payload.fileSize);
 	const partRequests = await uploaderStub.getMissingPartRequests();
 	const data = await c.var.session.get();
 	if (data) {
-		data.latestUploaderId = uploaderId.toString();
+		data.latestUploaderId = uploaderIdString;
 		data.lastUploadedFileName = payload.fileName;
 		await c.var.session.update(data);
 	}
 	return c.json({
-		uploaderId: uploaderId.toString(),
-		partRequests
+		uploaderId: uploaderIdString,
+		partRequests,
 	});
 });
 
 app.get('/api/uploads/:id', async (c) => {
-	const {id} = c.req.param();
-	const uploaderId = c.env.UPLOADER.idFromString(id);
+	const { id } = c.req.param();
+	const uploaderId = c.env.UPLOADER.idFromName(id);
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	const partRequests = await uploaderStub.getMissingPartRequests();
 	return Response.json({
-		partRequests
+		partRequests,
 	});
 });
 
@@ -56,12 +59,12 @@ async function cleanup(c, uploaderStub: DurableObjectStub<Uploader>) {
 
 app.patch('/api/uploads/:id/:part_number', async (c) => {
 	// Get the Actor
-	const {id} = c.req.param();
-	const uploaderId = c.env.UPLOADER.idFromString(id);
+	const { id } = c.req.param();
+	const uploaderId = c.env.UPLOADER.idFromName(id);
 	const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	// Pass request through into fetch
 	const response = await uploaderStub.fetch(c.req.raw);
-	const {remainingCount} = await response.json<{remainingCount: number}>();
+	const { remainingCount } = await response.json<{ remainingCount: number }>();
 	const data = await c.var.session.get();
 	if (data) {
 		if (remainingCount === 0) {
