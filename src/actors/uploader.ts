@@ -11,15 +11,15 @@ export type Configuration = {
 	file_size: number;
 	key: string;
 	multipart_upload_id: string;
-}
+};
 
 export type Part = {
 	part_number: number;
-	part_start:  number;
+	part_start: number;
 	part_end: number;
 	r2_uploaded_part: string;
-    completed: boolean;
-}
+	completed: boolean;
+};
 
 const PART_SIZE = 10 * 1024 * 1024; // 10mb
 
@@ -110,7 +110,7 @@ export class Uploader extends Actor<Env> {
 			return {
 				partNumber: row.part_number as number,
 				partStart: row.part_start as number,
-				partEnd: row.part_end as number
+				partEnd: row.part_end as number,
 			};
 		});
 		return partRequests;
@@ -140,14 +140,14 @@ export class Uploader extends Actor<Env> {
 					updated_at=CURRENT_TIMESTAMP
 				WHERE
 					part_number=${partNumber}`;
-				const results = this.sql<{remaining: number}>`SELECT count(*) as remaining FROM parts WHERE completed='f'`
+				const results = this.sql<{ remaining: number }>`SELECT count(*) as remaining FROM parts WHERE completed='f'`;
 				const remainingCount = results[0].remaining;
 				if (remainingCount === 0) {
-					const partsResults = this.sql<{r2_uploaded_part: string}>`SELECT r2_uploaded_part FROM parts ORDER BY part_number`;
-					const parts = partsResults.map(row => JSON.parse(row.r2_uploaded_part))
+					const partsResults = this.sql<{ r2_uploaded_part: string }>`SELECT r2_uploaded_part FROM parts ORDER BY part_number`;
+					const parts = partsResults.map((row) => JSON.parse(row.r2_uploaded_part));
 					await mpu.complete(parts);
 				}
-				return Response.json({ success: true, remainingCount});
+				return Response.json({ success: true, remainingCount });
 			}
 		}
 		return new Response('Not Found', { status: 404 });
