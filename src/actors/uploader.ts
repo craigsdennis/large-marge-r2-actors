@@ -153,7 +153,6 @@ export class Uploader extends Actor<Env> {
 	}
 
 	async cleanup() {
-		await this.ctx.storage.deleteAll();
-		await this.ctx.storage.deleteAlarm();
+		await this.destroy();
 	}
 }
