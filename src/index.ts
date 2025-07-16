@@ -31,7 +31,7 @@ app.post('/api/uploads', async (c) => {
 	const uploaderStub = Uploader.get(uploaderIdString);
 	//await uploaderStub?.setIdentifier(uploaderIdString);
 	if (uploaderStub === undefined) {
-		console.error("Missing uploader stub");
+		console.error("Missing uploader stub", uploaderIdString);
 		return c.json({success: false, error: "Uploader Stub not returned"}, 500);
 	}
 	await uploaderStub.initialize(payload.fileName, payload.fileSize);
