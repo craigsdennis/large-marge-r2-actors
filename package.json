@@ -13,11 +13,12 @@
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"typescript": "^5.5.2",
 		"vitest": "~3.2.0",
-		"wrangler": "^4.22.0"
+		"wrangler": "^4.24.4"
 	},
 	"dependencies": {
 		"@cloudflare/actors": "^0.0.1-beta.0",
 		"@hono/session": "^0.1.0",
+		"actors": "^0.0.1",
 		"hono": "^4.8.3"
 	}
 }
