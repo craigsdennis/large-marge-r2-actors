@@ -18,7 +18,6 @@
 	"dependencies": {
 		"@cloudflare/actors": "^0.0.1-beta.0",
 		"@hono/session": "^0.1.0",
-		"actors": "^0.0.1",
 		"hono": "^4.8.3"
 	}
 }
