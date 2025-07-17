@@ -1,4 +1,4 @@
-import { Actor, Persist, type ActorState } from "@cloudflare/actors";
+import { Actor, Persist, type ActorState } from '@cloudflare/actors';
 
 type PartRequest = {
 	partNumber: number;
@@ -29,7 +29,7 @@ export class Uploader extends Actor<Env> {
 	@Persist
 	multiPartUploadId?: string;
 
-	// Cached at the instance level
+	// Cached at the instance level on init/setup
 	_multiPartUpload?: R2MultipartUpload;
 
 	async onInit() {
@@ -49,9 +49,14 @@ export class Uploader extends Actor<Env> {
             );`,
 			},
 		];
+
 		this.ctx.blockConcurrencyWhile(async () => {
 			await this.storage.runMigrations();
 		});
+		if (this.multiPartUploadId !== undefined && this.key !== undefined) {
+			console.log('Hi reinitializing');
+			this._multiPartUpload = this.env.BIGGIES.resumeMultipartUpload(this.key, this.multiPartUploadId);
+		}
 	}
 
 	async setup(originalFileName: string, fileSize: number) {
@@ -59,8 +64,10 @@ export class Uploader extends Actor<Env> {
 		this.fileSize = fileSize;
 		// TODO: Find a unique name for the key
 		this.key = originalFileName;
-		// Create the multi-partupload
+		// Create the multi-part-upload
 		this._multiPartUpload = await this.env.BIGGIES.createMultipartUpload(this.key);
+		// Persist this value
+		this.multiPartUploadId = this._multiPartUpload.uploadId;
 		// Clean up anything here previously
 		this.sql`DELETE FROM parts;`;
 		// Determine what is needed
@@ -75,19 +82,6 @@ export class Uploader extends Actor<Env> {
 			// Store the needed future parts
 			this.sql`INSERT INTO parts (part_number, part_start, part_end) VALUES (${i + 1}, ${partStart}, ${partEnd});`;
 		}
-	}
-
-	async getMultiPartUpload() {
-		// Use cache first (Can I use onPersist?)
-		if (this._multiPartUpload) {
-			return this._multiPartUpload;
-		} else {
-			if (this.key === undefined || this.multiPartUploadId === undefined) {
-				throw Error("Uploader not configured correctly. Run `setup``")
-			}
-			this._multiPartUpload = this.env.BIGGIES.resumeMultipartUpload(this.key, this.multiPartUploadId);
-		}
-		return this._multiPartUpload;
 	}
 
 	async getMissingPartRequests(): Promise<PartRequest[]> {
@@ -109,7 +103,11 @@ export class Uploader extends Actor<Env> {
 			const [_, apiCheck, uploadsCheck, uploaderId, partNumberString] = url.pathname.split('/');
 			if (apiCheck === 'api' && uploadsCheck === 'uploads' && this.identifier === uploaderId) {
 				const partNumber = parseInt(partNumberString);
-				const mpu = await this.getMultiPartUpload();
+				const mpu = this._multiPartUpload;
+				if (mpu === undefined) {
+					throw new Error(`WTF no mpu ${this.multiPartUploadId}`);
+					return Response.json({ success: false });
+				}
 				// R2 Upload
 				const part = await mpu.uploadPart(partNumber, request.body as ReadableStream);
 				// Update the db
