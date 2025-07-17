@@ -1,16 +1,9 @@
-import { Actor, type ActorState } from '@cloudflare/actors';
+import { Actor, Persist, type ActorState } from '@cloudflare/actors';
 
 type PartRequest = {
 	partNumber: number;
 	partStart: number;
 	partEnd: number;
-};
-
-type Configuration = {
-	original_file_name: string;
-	file_size: number;
-	key: string;
-	multipart_upload_id: string;
 };
 
 type Part = {
@@ -24,30 +17,26 @@ type Part = {
 const PART_SIZE = 10 * 1024 * 1024; // 10mb
 
 export class Uploader extends Actor<Env> {
+	@Persist
+	originalFileName?: string;
+
+	@Persist
+	fileSize?: number;
+
+	@Persist
+	key?: string;
+
+	@Persist
+	multiPartUploadId?: string;
+
 	// Cached at the instance level
 	_multiPartUpload?: R2MultipartUpload;
 
-	constructor(ctx?: ActorState, env?: Env) {
-		super(ctx, env);
-
+	onInit() {
 		// Set migrations for the SQLite database
 		this.storage.migrations = [
 			{
 				idMonotonicInc: 1,
-				description: 'Create configuration table',
-				sql: `CREATE TABLE IF NOT EXISTS configuration (
-                id INTEGER PRIMARY KEY,
-                original_file_name TEXT NOT NULL,
-				file_size INTEGER NOT NULL,
-				key TEXT NOT NULL,
-				multipart_upload_id TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
-            );`,
-			},
-			{
-				idMonotonicInc: 2,
 				description: 'Create parts table',
 				sql: `CREATE TABLE IF NOT EXISTS parts (
                 part_number INTEGER PRIMARY_KEY,
@@ -60,25 +49,21 @@ export class Uploader extends Actor<Env> {
             );`,
 			},
 		];
-		ctx?.blockConcurrencyWhile(async () => {
+		this.ctx.blockConcurrencyWhile(async () => {
 			await this.storage.runMigrations();
 		});
 	}
 
-	async initialize(originalFileName: string, fileSize: number) {
+	async setup(originalFileName: string, fileSize: number) {
+		this.originalFileName = originalFileName;
+		this.fileSize = fileSize;
 		// TODO: Find a unique name for the key
-		const key = originalFileName;
+		this.key = originalFileName;
 		// Create the multi-partupload
-		this._multiPartUpload = await this.env.BIGGIES.createMultipartUpload(key);
-		this.sql`DELETE FROM configuration;`;
-		// Insert into configuration
-		this.sql`INSERT INTO configuration (
-			original_file_name,
-			file_size,
-			key,
-			multipart_upload_id
-		) VALUES (${originalFileName}, ${fileSize}, ${key}, ${this._multiPartUpload.uploadId})`;
+		this._multiPartUpload = await this.env.BIGGIES.createMultipartUpload(this.key);
+		// Clean up anything here previously
 		this.sql`DELETE FROM parts;`;
+		// Determine what is needed
 		const partCount = Math.ceil(fileSize / PART_SIZE);
 		for (let i = 0; i < partCount; i++) {
 			const partStart = i * PART_SIZE;
@@ -87,20 +72,21 @@ export class Uploader extends Actor<Env> {
 				const remainder = fileSize % PART_SIZE;
 				partEnd = partStart + remainder;
 			}
+			// Store the needed future parts
 			this.sql`INSERT INTO parts (part_number, part_start, part_end) VALUES (${i + 1}, ${partStart}, ${partEnd});`;
 		}
 	}
 
 	async getMultiPartUpload() {
-		// Use cache first
+		// Use cache first (Can I use onPersist?)
 		if (this._multiPartUpload) {
 			return this._multiPartUpload;
+		} else {
+			if (this.key === undefined || this.multiPartUploadId === undefined) {
+				throw Error("Uploader not configured correctly. Run `setup``")
+			}
+			this._multiPartUpload = this.env.BIGGIES.resumeMultipartUpload(this.key, this.multiPartUploadId);
 		}
-		const config = await this.getConfiguration();
-		if (config === undefined) {
-			throw new Error('Configuration is missing, call initialize first');
-		}
-		this._multiPartUpload = this.env.BIGGIES.resumeMultipartUpload(config.key, config.multipart_upload_id);
 		return this._multiPartUpload;
 	}
 
@@ -114,12 +100,6 @@ export class Uploader extends Actor<Env> {
 			};
 		});
 		return partRequests;
-	}
-
-	async getConfiguration(): Promise<Configuration> {
-		// Load the configuration
-		const results = this.sql<Configuration>`SELECT * FROM configuration ORDER BY created_at DESC LIMIT 1`;
-		return results[0];
 	}
 
 	// Use fetch so we can use the request
