@@ -1,4 +1,4 @@
-import { Actor, Persist, type ActorState } from '@cloudflare/actors';
+import { Actor, Persist, type ActorState } from "@cloudflare/actors";
 
 type PartRequest = {
 	partNumber: number;
@@ -32,7 +32,7 @@ export class Uploader extends Actor<Env> {
 	// Cached at the instance level
 	_multiPartUpload?: R2MultipartUpload;
 
-	onInit() {
+	async onInit() {
 		// Set migrations for the SQLite database
 		this.storage.migrations = [
 			{
@@ -102,7 +102,7 @@ export class Uploader extends Actor<Env> {
 		return partRequests;
 	}
 
-	// Use fetch so we can use the request
+	// Use fetch so we can use the incoming request
 	async fetch(request: Request): Promise<Response> {
 		if (request.method === 'PATCH') {
 			const url = new URL(request.url);

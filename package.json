@@ -16,7 +16,7 @@
 		"wrangler": "^4.24.4"
 	},
 	"dependencies": {
-		"@cloudflare/actors": "github:cloudflare/actors",
+		"@cloudflare/actors": "file:../../oss/cloudflare/actors",
 		"@hono/session": "^0.1.0",
 		"hono": "^4.8.3"
 	}

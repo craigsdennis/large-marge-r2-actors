@@ -84,9 +84,9 @@ app.patch('/api/uploads/:id/:part_number', async (c) => {
 async function cleanup(c: Context<EnvWithSession>, uploaderStub: DurableObjectStub<Uploader>) {
 	c.var.session.delete();
 	try {
-		await uploaderStub.destroy();
+		await uploaderStub.destroy({forceEviction: true});
 	} catch (e) {
-		console.warn('Evicted stub', e);
+		console.log('Evicted the stub');
 	}
 	console.log('Cleaned up session and Actor data');
 }
