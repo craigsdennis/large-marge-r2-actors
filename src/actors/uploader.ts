@@ -105,7 +105,6 @@ export class Uploader extends Actor<Env> {
 				const partNumber = parseInt(partNumberString);
 				const mpu = this._multiPartUpload;
 				if (mpu === undefined) {
-					throw new Error(`WTF no mpu ${this.multiPartUploadId}`);
 					return Response.json({ success: false });
 				}
 				// R2 Upload
