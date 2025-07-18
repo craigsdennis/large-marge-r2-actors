@@ -1,12 +1,11 @@
 import { Context, Hono } from 'hono';
 import { useSession } from '@hono/session';
-import type { Session, SessionData, SessionEnv, Storage } from '@hono/session';
+import type { SessionEnv } from '@hono/session';
 import { Uploader } from './actors/uploader';
-import { BlankInput } from 'hono/types';
 
 export { Uploader };
 
-type EnvWithSession = {Bindings: Env} & SessionEnv;
+type EnvWithSession = { Bindings: Env } & SessionEnv;
 const app = new Hono<EnvWithSession>();
 
 app.use(useSession());
@@ -26,15 +25,12 @@ app.get('/api/resume', async (c) => {
 app.post('/api/uploads', async (c) => {
 	const payload = await c.req.json();
 	const uploaderIdString = crypto.randomUUID();
-	// const uploaderId = c.env.UPLOADER.idFromName(uploaderIdString);
-	// const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	const uploaderStub = Uploader.get(uploaderIdString);
-	//await uploaderStub?.setIdentifier(uploaderIdString);
 	if (uploaderStub === undefined) {
-		console.error("Missing uploader stub", uploaderIdString);
-		return c.json({success: false, error: "Uploader Stub not returned"}, 500);
+		console.error('Missing uploader stub', uploaderIdString);
+		return c.notFound();
 	}
-	await uploaderStub.initialize(payload.fileName, payload.fileSize);
+	await uploaderStub.setup(payload.fileName, payload.fileSize);
 	const partRequests = await uploaderStub.getMissingPartRequests();
 	const data = await c.var.session.get();
 	if (data) {
@@ -50,35 +46,27 @@ app.post('/api/uploads', async (c) => {
 
 app.get('/api/uploads/:id', async (c) => {
 	const { id } = c.req.param();
-	// const uploaderId = c.env.UPLOADER.idFromName(id);
-	// const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	const uploaderStub = Uploader.get(id);
-	const partRequests = await uploaderStub?.getMissingPartRequests();
+	if (uploaderStub === undefined) {
+		return c.notFound();
+	}
+	const partRequests = await uploaderStub.getMissingPartRequests();
 	return Response.json({
 		partRequests,
 	});
 });
 
-async function cleanup(c: Context<EnvWithSession>, uploaderStub: DurableObjectStub<Uploader>) {
-	c.var.session.delete();
-	try {
-		await uploaderStub.destroy();
-	} catch(e) {
-		console.warn("Evicted stub", e);
-	}
-	console.log("Cleaned up session and Actor data");
-}
-
 app.patch('/api/uploads/:id/:part_number', async (c) => {
 	// Get the Actor
 	const { id } = c.req.param();
-	// const uploaderId = c.env.UPLOADER.idFromName(id);
-	// const uploaderStub = c.env.UPLOADER.get(uploaderId);
 	const uploaderStub = Uploader.get(id);
+	if (uploaderStub === undefined) {
+		return c.notFound();
+	}
 	// Pass request through into fetch
 	const response = await uploaderStub?.fetch(c.req.raw);
 	if (!response.ok) {
-		throw new Error("Patch failed");
+		throw new Error('Patch failed');
 	}
 	const { remainingCount } = await response.json<{ remainingCount: number }>();
 	const data = await c.var.session.get();
@@ -92,5 +80,15 @@ app.patch('/api/uploads/:id/:part_number', async (c) => {
 	}
 	return c.json(remainingCount);
 });
+
+async function cleanup(c: Context<EnvWithSession>, uploaderStub: DurableObjectStub<Uploader>) {
+	c.var.session.delete();
+	try {
+		await uploaderStub.destroy({forceEviction: true});
+	} catch (e) {
+		console.log('Evicted the stub');
+	}
+	console.log('Cleaned up session and Actor data');
+}
 
 export default app;
