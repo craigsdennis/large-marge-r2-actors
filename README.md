@@ -1,5 +1,8 @@
 # Upload Large Files to R2 Object Storage using Actors
 
+[<img src="https://img.youtube.com/vi/O9Wlb6GX5d8/0.jpg">](https://youtu.be/O9Wlb6GX5d8 "Large Marge")
+
+
 [R2](https://developers.cloudflare.com/r2) is a zero egress fee S3 compatible object storage solution. It is ideal for large AI training datasets. If you've ever tried to allow your users to upload large datasets via a web browser, you know it can be challenging. Networks can be faulty, and resuming operations is often needed.
 
 [Workers](https://developers.cloudflare.com/workers) are powerful serverless functions, but they are limited to the amount of data that they can pass. A common solution is to use the [R2 Multipart Uploads](https://developers.cloudflare.com/r2/api/workers/workers-multipart-usage/). However maintaining state of the upload can be challenging.
